@@ -1,0 +1,208 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+  <title>Quản lý nhóm</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root {
+      --bg: var(--tg-theme-bg-color, #111);
+      --text: var(--tg-theme-text-color, #fff);
+      --hint: var(--tg-theme-hint-color, #888);
+      --link: var(--tg-theme-link-color, #6ab7ff);
+      --btn: var(--tg-theme-button-color, #2481cc);
+      --btn-text: var(--tg-theme-button-text-color, #fff);
+      --sec: var(--tg-theme-secondary-bg-color, #1c1c1d);
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; font-family: system-ui, -apple-system, sans-serif;
+      background: var(--bg); color: var(--text); padding: 12px 14px 88px;
+    }
+    h1 { font-size: 18px; margin: 0 0 12px; }
+    h2 { font-size: 14px; color: var(--hint); margin: 18px 0 8px; text-transform: uppercase; letter-spacing: .04em; }
+    .card { background: var(--sec); border-radius: 12px; padding: 12px; margin-bottom: 8px; }
+    label { display: block; font-size: 13px; margin: 8px 0 4px; }
+    input[type=text], input[type=number], select, textarea {
+      width: 100%; padding: 10px; border-radius: 8px; border: 0;
+      background: var(--bg); color: var(--text); font-size: 15px;
+    }
+    textarea { min-height: 72px; resize: vertical; }
+    .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+    .chip { padding: 6px 10px; border-radius: 999px; background: var(--bg); font-size: 13px; }
+    .chip input { margin-right: 6px; }
+    .user { padding: 8px 0; border-bottom: 1px solid rgba(127,127,127,.2); font-size: 14px; }
+    .user:last-child { border: 0; }
+    .muted { color: var(--hint); font-size: 13px; }
+    .err { color: #e85d5d; padding: 16px; }
+    #detail { white-space: pre-wrap; font-size: 14px; line-height: 1.45; }
+  </style>
+</head>
+<body>
+  <div id="empty" class="err" hidden>Mở Mini App bằng lệnh <b>/app</b> trong nhóm (admin). Chat riêng: /app rồi chọn nhóm.</div>
+  <div id="app" hidden>
+    <h1 id="title">Quản lý nhóm</h1>
+    <p class="muted" id="chatId"></p>
+
+    <h2>Chào mừng</h2>
+    <div class="card">
+      <label class="row"><input type="checkbox" id="we"> Bật tin chào</label>
+      <label>Nội dung</label>
+      <textarea id="wt" placeholder="Xin chào {mention} đến với {chatname}."></textarea>
+    </div>
+
+    <h2>Cảnh cáo & flood</h2>
+    <div class="card">
+      <label>Giới hạn cảnh cáo</label>
+      <input type="number" id="wl" min="1" max="50">
+      <label>Khi đủ cảnh cáo</label>
+      <select id="wm">
+        <option value="mute">mute</option>
+        <option value="ban">ban</option>
+        <option value="kick">kick</option>
+      </select>
+      <label>Flood (0 = tắt)</label>
+      <input type="number" id="fl" min="0" max="30">
+      <label>Khi flood</label>
+      <select id="fm">
+        <option value="mute">mute</option>
+        <option value="ban">ban</option>
+        <option value="kick">kick</option>
+        <option value="warn">warn</option>
+      </select>
+    </div>
+
+    <h2>Khóa loại tin</h2>
+    <div class="card row" id="locks"></div>
+
+    <h2>Danh sách chặn</h2>
+    <div class="card">
+      <label>Chế độ</label>
+      <select id="bm">
+        <option value="delete">delete</option>
+        <option value="warn">warn</option>
+        <option value="mute">mute</option>
+        <option value="ban">ban</option>
+      </select>
+      <div id="blocks"></div>
+      <div class="row" style="margin-top:8px">
+        <input type="text" id="newBlock" placeholder="thêm từ (tối thiểu 2 ký tự)">
+      </div>
+    </div>
+
+    <h2>Thành viên đã thấy</h2>
+    <div class="card" id="users"></div>
+    <div class="card" id="detail" hidden></div>
+  </div>
+  <script>
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (tg) { tg.ready(); tg.expand(); }
+    const LOCKS = ['url','sticker','gif','photo','video','voice','document','forward','bot','media','command'];
+
+    function b64urlDecode(s) {
+      s = String(s).replace(/-/g, '+').replace(/_/g, '/');
+      while (s.length % 4) s += '=';
+      const bin = atob(s);
+      const bytes = Uint8Array.from(bin, function (c) { return c.charCodeAt(0); });
+      return new TextDecoder().decode(bytes);
+    }
+
+    function loadSnap() {
+      const hash = (location.hash || '').replace(/^#/, '');
+      if (!hash) return null;
+      try { return JSON.parse(b64urlDecode(hash)); } catch (e) { return null; }
+    }
+
+    const snap = loadSnap();
+    if (!snap || typeof snap.c !== 'number') {
+      document.getElementById('empty').hidden = false;
+    } else {
+      document.getElementById('app').hidden = false;
+      document.getElementById('title').textContent = snap.t || 'Quản lý nhóm';
+      document.getElementById('chatId').textContent = 'Id nhóm: ' + snap.c;
+      document.getElementById('we').checked = !!snap.we;
+      document.getElementById('wt').value = snap.wt || '';
+      document.getElementById('wl').value = snap.wl || 3;
+      document.getElementById('wm').value = snap.wm || 'mute';
+      document.getElementById('fl').value = snap.fl || 0;
+      document.getElementById('fm').value = snap.fm || 'mute';
+      document.getElementById('bm').value = snap.bm || 'delete';
+
+      const lockBox = document.getElementById('locks');
+      const selected = new Set(snap.L || []);
+      LOCKS.forEach(function (t) {
+        const lab = document.createElement('label');
+        lab.className = 'chip';
+        lab.innerHTML = '<input type="checkbox"' + (selected.has(t) ? ' checked' : '') + ' data-lock="' + t + '"> ' + t;
+        lockBox.appendChild(lab);
+      });
+
+      const blocks = Array.isArray(snap.B) ? snap.B.slice() : [];
+      const blocksEl = document.getElementById('blocks');
+      function renderBlocks() {
+        blocksEl.innerHTML = '';
+        blocks.forEach(function (w, i) {
+          const row = document.createElement('div');
+          row.className = 'row';
+          row.style.marginTop = '6px';
+          row.innerHTML = '<span class="chip">' + w.replace(/</g, '&lt;') + '</span>';
+          const btn = document.createElement('button');
+          btn.textContent = 'xóa';
+          btn.onclick = function () { blocks.splice(i, 1); renderBlocks(); };
+          row.appendChild(btn);
+          blocksEl.appendChild(row);
+        });
+      }
+      renderBlocks();
+      document.getElementById('newBlock').addEventListener('change', function (e) {
+        const v = e.target.value.trim();
+        if (v.length >= 2 && blocks.indexOf(v) < 0) { blocks.push(v); renderBlocks(); }
+        e.target.value = '';
+      });
+
+      const usersEl = document.getElementById('users');
+      const detail = document.getElementById('detail');
+      (snap.U || []).forEach(function (u) {
+        const div = document.createElement('div');
+        div.className = 'user';
+        div.textContent = (u.n || u.i) + ' · id ' + u.i + ' · cảnh cáo ' + (u.k || 0);
+        div.onclick = function () {
+          detail.hidden = false;
+          detail.textContent = 'Tên: ' + (u.n || '') + '\nId: ' + u.i + '\nUsername: ' + (u.u ? '@' + u.u : 'không có') + '\nCảnh cáo: ' + (u.k || 0);
+        };
+        usersEl.appendChild(div);
+      });
+      if (!(snap.U || []).length) usersEl.innerHTML = '<p class="muted">Chưa có thành viên trong bộ nhớ.</p>';
+
+      function collect() {
+        const L = [];
+        lockBox.querySelectorAll('input[data-lock]').forEach(function (el) {
+          if (el.checked) L.push(el.getAttribute('data-lock'));
+        });
+        return {
+          c: snap.c,
+          we: document.getElementById('we').checked,
+          wt: document.getElementById('wt').value,
+          wl: Number(document.getElementById('wl').value),
+          wm: document.getElementById('wm').value,
+          fl: Number(document.getElementById('fl').value),
+          fm: document.getElementById('fm').value,
+          bm: document.getElementById('bm').value,
+          L: L,
+          B: blocks
+        };
+      }
+
+      if (tg && tg.MainButton) {
+        tg.MainButton.setText('Lưu cài đặt');
+        tg.MainButton.show();
+        tg.MainButton.onClick(function () {
+          const patch = collect();
+          tg.sendData(JSON.stringify(patch));
+        });
+      }
+    }
+  </script>
+</body>
+</html>
