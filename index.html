@@ -40,7 +40,11 @@
   </style>
 </head>
 <body>
-  <div id="empty" class="err" hidden>Mở Mini App bằng lệnh <b>/app</b> trong nhóm (admin). Chat riêng: /app rồi chọn nhóm.</div>
+  <div id="empty" class="err" hidden>
+    <p><b>Chưa có dữ liệu nhóm.</b></p>
+    <p>Đóng cửa sổ này. Trong nhóm (admin) gõ <b>/app</b> rồi bấm nút <b>Mở giao diện</b> ngay dưới tin nhắn bot.</p>
+    <p>Đừng dùng nút menu <b>Quản lý</b> — nút đó không gửi dữ liệu nhóm.</p>
+  </div>
   <div id="app" hidden>
     <h1 id="title">Quản lý nhóm</h1>
     <p class="muted" id="chatId"></p>
@@ -109,9 +113,14 @@
     }
 
     function loadSnap() {
-      const hash = (location.hash || '').replace(/^#/, '');
-      if (!hash) return null;
-      try { return JSON.parse(b64urlDecode(hash)); } catch (e) { return null; }
+      var d = '';
+      try { d = new URLSearchParams(location.search).get('d') || ''; } catch (e) {}
+      if (!d) d = (location.hash || '').replace(/^#/, '');
+      if (!d && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) {
+        d = tg.initDataUnsafe.start_param;
+      }
+      if (!d) return null;
+      try { return JSON.parse(b64urlDecode(d)); } catch (e) { return null; }
     }
 
     const snap = loadSnap();
