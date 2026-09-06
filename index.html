@@ -127,7 +127,6 @@
       <div id="logPager" class="flex items-center justify-between text-xs text-stone-500"></div>
     </section>
   </div>
-
   <script>
     const tg = window.Telegram && window.Telegram.WebApp;
     if (tg) { tg.ready(); tg.expand(); tg.setHeaderColor && tg.setHeaderColor('#070709'); }
@@ -152,6 +151,13 @@
       try { return JSON.parse(b64urlDecode(d)); } catch (e) { return null; }
     }
     function haptic() { try { tg.HapticFeedback.selectionChanged(); } catch (e) {} }
+    function esc(s) {
+      return String(s)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
+    }
 
     document.querySelectorAll('[data-tab]').forEach(function (btn) {
       btn.addEventListener('click', function () {
@@ -287,12 +293,12 @@
           var row = document.createElement('button');
           row.type = 'button';
           row.className = 'flex w-full items-center gap-3 px-4 py-3 text-left ' + (idx ? 'border-t border-white/5' : '');
-          var ini = String(u.n || u.i).slice(0, 1).toUpperCase();
-          row.innerHTML = '<span class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-300/15 text-sm text-amber-200">' + ini + '</span><span class="flex-1"><span class="block text-sm">' + String(u.n || u.i).replace(/</g,'&lt;') + '</span><span class="block text-[11px] text-stone-500">' + u.i + '</span></span><span class="rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-amber-200">' + (u.k || 0) + '</span>';
+          var ini = esc(String(u.n || u.i).slice(0, 1).toUpperCase());
+          row.innerHTML = '<span class="flex h-9 w-9 items-center justify-center rounded-full bg-amber-300/15 text-sm text-amber-200">' + ini + '</span><span class="flex-1"><span class="block text-sm">' + esc(u.n || u.i) + '</span><span class="block text-[11px] text-stone-500">' + esc(u.i) + '</span></span><span class="rounded-full bg-black/40 px-2 py-0.5 text-[11px] text-amber-200">' + esc(u.k || 0) + '</span>';
           row.onclick = function () {
             haptic();
             detail.classList.remove('hidden');
-            detail.innerHTML = '<p class="text-[11px] uppercase tracking-widest text-amber-300/70">Profile</p><p class="mt-1 font-display text-xl">' + String(u.n || '').replace(/</g,'&lt;') + '</p><p>Id · <span class="text-amber-200">' + u.i + '</span></p><p>Username · ' + (u.u ? '@' + u.u : 'none') + '</p><p>Warns · ' + (u.k || 0) + '</p>';
+            detail.innerHTML = '<p class="text-[11px] uppercase tracking-widest text-amber-300/70">Profile</p><p class="mt-1 font-display text-xl">' + esc(u.n || '') + '</p><p>Id · <span class="text-amber-200">' + esc(u.i) + '</span></p><p>Username · ' + (u.u ? '@' + esc(u.u) : 'none') + '</p><p>Warns · ' + esc(u.k || 0) + '</p>';
           };
           usersEl.appendChild(row);
         });
@@ -315,7 +321,7 @@
           page.items.forEach(function (a, idx) {
             var row = document.createElement('div');
             row.className = 'px-4 py-3 ' + (idx ? 'border-t border-white/5' : '');
-            row.innerHTML = '<p class="text-[11px] uppercase tracking-widest text-amber-300/70">' + (LABELS[a.t] || a.t) + '</p><p class="mt-1 text-sm">' + String(a.n || a.i).replace(/</g,'&lt;') + '</p><p class="text-[11px] text-stone-500">' + (a.r ? String(a.r).replace(/</g,'&lt;') : 'id ' + a.i) + '</p>';
+            row.innerHTML = '<p class="text-[11px] uppercase tracking-widest text-amber-300/70">' + esc(LABELS[a.t] || a.t) + '</p><p class="mt-1 text-sm">' + esc(a.n || a.i) + '</p><p class="text-[11px] text-stone-500">' + esc(a.r ? a.r : 'id ' + a.i) + '</p>';
             box.appendChild(row);
           });
         }
@@ -369,7 +375,9 @@
           tg.MainButton.show();
           tg.MainButton.onClick(function () {
             haptic();
-            if (snap.bu) tg.openTelegramLink('https://t.me/' + snap.bu + '?start=a_' + snap.c);
+            if (snap.bu && /^[A-Za-z0-9_]{5,32}$/.test(snap.bu)) {
+              tg.openTelegramLink('https://t.me/' + snap.bu + '?start=a_' + snap.c);
+            }
           });
         } else {
           tg.MainButton.setText('Save settings');
