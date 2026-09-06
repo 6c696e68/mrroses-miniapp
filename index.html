@@ -46,6 +46,16 @@
         <p class="mt-2 text-[11px] text-stone-500">{mention} {first} {chatname} {count}</p>
       </div>
 
+      <div class="rounded-3xl border border-amber-200/10 bg-white/5 p-4">
+        <div class="flex items-center justify-between gap-4">
+          <div>
+            <p class="text-[11px] uppercase tracking-widest text-stone-500">Username</p>
+            <p class="mt-1 text-base font-medium">Mute joins with no @username</p>
+          </div>
+          <button id="nu" type="button" class="toggle" aria-pressed="false"></button>
+        </div>
+      </div>
+
       <div class="grid grid-cols-2 gap-3">
         <label class="rounded-3xl border border-amber-200/10 bg-white/5 p-4">
           <span class="text-[11px] uppercase tracking-widest text-stone-500">Warn limit</span>
@@ -170,6 +180,14 @@
         haptic();
         we.classList.toggle('on');
         we.setAttribute('aria-pressed', we.classList.contains('on') ? 'true' : 'false');
+      });
+      var nu = document.getElementById('nu');
+      nu.classList.toggle('on', !!snap.nu);
+      nu.setAttribute('aria-pressed', snap.nu ? 'true' : 'false');
+      nu.addEventListener('click', function () {
+        haptic();
+        nu.classList.toggle('on');
+        nu.setAttribute('aria-pressed', nu.classList.contains('on') ? 'true' : 'false');
       });
       document.getElementById('wt').value = snap.wt || '';
       document.getElementById('wl').value = snap.wl || 3;
@@ -324,6 +342,7 @@
         return {
           c: snap.c,
           we: we.classList.contains('on'),
+          nu: nu.classList.contains('on'),
           wt: document.getElementById('wt').value,
           wl: Number(document.getElementById('wl').value),
           wm: document.getElementById('wm').value,
