@@ -138,6 +138,14 @@
       const bytes = Uint8Array.from(bin, function (ch) { return ch.charCodeAt(0); });
       return new TextDecoder().decode(bytes);
     }
+    function decodeSnapshot(raw) {
+      if (!raw || typeof raw !== 'string') return null;
+      try {
+        var data = JSON.parse(b64urlDecode(raw));
+        if (!data || typeof data !== 'object') return null;
+        return data;
+      } catch (e) { return null; }
+    }
     function chatIdFromUrl() {
       try {
         var params = new URLSearchParams(location.search);
@@ -147,7 +155,7 @@
         if (!d) d = (location.hash || '').replace(/^#/, '');
         if (!d && tg && tg.initDataUnsafe && tg.initDataUnsafe.start_param) d = tg.initDataUnsafe.start_param;
         if (!d) return null;
-        var snap = JSON.parse(b64urlDecode(d));
+        var snap = decodeSnapshot(d);
         if (snap && Number.isSafeInteger(snap.c) && snap.c < 0) return snap.c;
       } catch (e) {}
       return null;
